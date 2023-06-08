@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-deployment-development
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: messageapi:latest
+        ports:
+        - containerPort: 5000
+      - name: vector-sidecar
+        image: timberio/vector:latest
+        env:
+          - name: VECTOR_CONFIG
+            value: |
+              [sources.in]
+                type = "stdin"
+              [sinks.out]
+                type = "aws_s3"
+                bucket = "s3://plivo-message-api/"
+                region = "ap-southeast-1"
+        volumeMounts:
+          - name: vector-config
+            mountPath: /etc/vector
+            readOnly: true

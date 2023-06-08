@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: database-statefulset
+spec:
+  serviceName: database-service
+  replicas: 3
+  selector:
+    matchLabels:
+      role: database
+  template:
+    metadata:
+      labels:
+        role: database
+    spec:
+      containers:
+      - name: database
+        image: postgres:15.3
+        ports:
+        - containerPort: 5432
+        env:
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: database-credentials
+                key: POSTGRES_USER
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: database-credentials
+                key: POSTGRES_PASSWORD
+  volumeClaimTemplates:
+  - metadata:
+      name: data-volume
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: database-credentials
+type: Opaque
+data:
+  POSTGRES_USER: <base64-encoded-username>
+  POSTGRES_PASSWORD: <base64-encoded-password>
+

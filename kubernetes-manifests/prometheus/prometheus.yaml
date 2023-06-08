@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+spec:
+  replicas: 1
+  resources:
+    requests:
+      memory: 400Mi
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 2Gi
+  ruleSelector:
+    matchLabels:
+      prometheus: "true"
+  serviceMonitorSelector:
+    matchLabels:
+      app: api

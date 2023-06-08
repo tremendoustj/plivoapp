@@ -1,0 +1,13 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  name: alertmanager
+spec:
+  replicas: 1
+  route:
+    receiver: default-receiver
+    group_by: [alertname, severity]
+  receivers:
+  - name: default-receiver
+    webhookConfigs:
+    - url: http://your-webhook-endpoint

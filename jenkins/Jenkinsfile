@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Build') {
+            steps {
+                script {
+                    // Build Docker image
+                    docker.build("messageapi:${env.BUILD_NUMBER}")
+                }
+            }
+        }
+        
+        stage('Security Vulnerability Scanning') {
+            dependsOn('Build')
+            steps {
+                script {
+                    // Run security vulnerability scanning with Trivy
+                    sh 'trivy messageapi:${env.BUILD_NUMBER}'
+                }
+            }
+        }
+        
+        stage('Push to ECR') {
+            dependsOn('Security Vulnerability Scanning')
+            steps {
+                script {
+                    // Login to Amazon ECR
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-ecr-credentials']]) {
+                        sh 'aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-west-2.amazonaws.com'
+                    }
+                    
+                    // Tag and push the Docker image to ECR
+                    sh "docker tag messageapi:${env.BUILD_NUMBER} <account-id>.dkr.ecr.us-west-2.amazonaws.com/messageapi:${env.BUILD_NUMBER}"
+                    sh "docker push <account-id>.dkr.ecr.us-west-2.amazonaws.com/messageapi:${env.BUILD_NUMBER}"
+                }
+            }
+        }
+        
+        stage('Deployment') {
+            dependencies {
+                // Ensure previous stages are successful
+                upstream('Push to ECR')
+            }
+            input {
+                // Manual deployment with environment selection
+                message "Select the deployment environment:"
+                parameters {
+                    choice(choices: ['development', 'staging', 'production'], description: 'Select the environment', name: 'ENVIRONMENT')
+                }
+            }
+            steps {
+                script {
+                    // Deploy the Docker image to the selected environment
+                    sh "kubectl set image deployment/api-deployment-${params.ENVIRONMENT} api=<account-id>.dkr.ecr.us-west-2.amazonaws.com/messageapi:${env.BUILD_NUMBER}"
+                }
+            }
+        }
+    }
+}

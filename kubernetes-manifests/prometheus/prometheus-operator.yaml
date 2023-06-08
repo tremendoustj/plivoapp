@@ -1,0 +1,6 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusOperator
+metadata:
+  name: prometheus-operator
+spec:
+  replicas: 1
